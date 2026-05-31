@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@receptio/shared/*": [
+        "packages/shared/src/*"
+      ],
+      "@receptio/ai/*": [
+        "packages/ai/src/*"
+      ],
+      "@receptio/db/*": [
+        "packages/db/src/*"
+      ]
+    }
+  }
+}

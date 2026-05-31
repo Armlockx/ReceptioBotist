@@ -1,0 +1,24 @@
+{
+  "name": "@receptio/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "lint": "tsc --project tsconfig.json --noEmit",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/database.types.ts",
+    "db:seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "dotenv": "^17.4.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supabase": "^2.33.9",
+    "tsx": "^4.20.3",
+    "typescript": "^5.5.4"
+  }
+}
