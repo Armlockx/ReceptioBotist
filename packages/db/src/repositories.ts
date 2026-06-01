@@ -159,6 +159,17 @@ export async function createTenantWithTemplate(params: {
   return tenant;
 }
 
+export async function listTenants(limit = 500) {
+  const supabase = createServiceSupabaseClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id,name,slug,tenant_key,niche_type,created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listConversations(tenantId: string, limit = 50) {
   const supabase = createServiceSupabaseClient();
   const { data, error } = await supabase

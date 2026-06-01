@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminNav } from "./_components/admin-nav";
 
 const sections = [
   { href: "/admin/onboarding", title: "Onboarding de Tenant" },
@@ -11,12 +12,13 @@ const sections = [
 
 export default function AdminHomePage() {
   return (
-    <main style={{ margin: "2rem", fontFamily: "sans-serif" }}>
+    <main className="page card stack">
+      <AdminNav />
       <h1>Painel Admin ReceptioBotist</h1>
-      <p>Área operacional do SaaS multi-tenant.</p>
-      <ul>
+      <p className="muted">Área operacional do SaaS multi-tenant.</p>
+      <ul className="nav-grid">
         {sections.map((section) => (
-          <li key={section.href}>
+          <li className="card" key={section.href}>
             <Link href={section.href}>{section.title}</Link>
           </li>
         ))}

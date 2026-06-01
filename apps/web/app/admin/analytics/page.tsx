@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AdminNav } from "../_components/admin-nav";
+import { TenantSelect } from "../_components/tenant-select";
 
 type Summary = {
   requests: number;
@@ -28,31 +30,52 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main style={{ margin: "2rem", fontFamily: "sans-serif" }}>
+    <main className="page card stack">
+      <AdminNav />
       <h1>Dashboard IA</h1>
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="Tenant ID" />
-        <button type="button" onClick={loadAnalytics}>
+      <p className="muted">Métricas de tráfego, custo e estabilidade por tenant.</p>
+      <div className="row">
+        <TenantSelect value={tenantId} onChange={setTenantId} placeholder="Selecione o tenant para analytics" />
+        <button className="button" type="button" onClick={loadAnalytics} disabled={!tenantId}>
           Carregar
         </button>
       </div>
 
       {summary && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
-          <div>Requisições: {summary.requests}</div>
-          <div>Tokens: {summary.total_tokens}</div>
-          <div>Custo estimado: US$ {summary.cost_estimated.toFixed(4)}</div>
-          <div>Latência média: {summary.average_latency_ms} ms</div>
-          <div>Erros totais: {summary.errors_count}</div>
-          <div>Erros 429: {summary.errors_429}</div>
+        <div className="kpi-grid">
+          <div className="kpi">
+            Requisições
+            <strong>{summary.requests}</strong>
+          </div>
+          <div className="kpi">
+            Tokens
+            <strong>{summary.total_tokens}</strong>
+          </div>
+          <div className="kpi">
+            Custo estimado
+            <strong>US$ {summary.cost_estimated.toFixed(4)}</strong>
+          </div>
+          <div className="kpi">
+            Latência média
+            <strong>{summary.average_latency_ms} ms</strong>
+          </div>
+          <div className="kpi">
+            Erros totais
+            <strong>{summary.errors_count}</strong>
+          </div>
+          <div className="kpi">
+            Erros 429
+            <strong>{summary.errors_429}</strong>
+          </div>
         </div>
       )}
 
-      <h2 style={{ marginTop: "1rem" }}>Uso diário</h2>
-      <ul>
+      <h2 className="section-title">Uso diário</h2>
+      <ul className="list">
         {dailyUsage.map((row) => (
           <li key={row.usage_date}>
-            {row.usage_date}: {row.requests_count} req, {row.total_tokens} tokens, US$ {Number(row.cost_estimated).toFixed(4)}
+            <span className="mono">{row.usage_date}</span>: {row.requests_count} req, {row.total_tokens} tokens, US${" "}
+            {Number(row.cost_estimated).toFixed(4)}
           </li>
         ))}
       </ul>

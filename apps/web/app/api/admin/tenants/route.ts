@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createTenantWithTemplate } from "@receptio/db/index";
+import { createTenantWithTemplate, listTenants } from "@receptio/db/index";
 import { nicheTypeSchema } from "@receptio/shared/index";
 import { z } from "zod";
 
@@ -23,4 +23,9 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ tenant }, { status: 201 });
+}
+
+export async function GET() {
+  const tenants = await listTenants(1000);
+  return NextResponse.json({ tenants });
 }

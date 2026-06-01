@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AdminNav } from "../_components/admin-nav";
+import { TenantSelect } from "../_components/tenant-select";
 
 export default function KnowledgePage() {
   const [tenantId, setTenantId] = useState("");
@@ -30,16 +32,20 @@ export default function KnowledgePage() {
   }
 
   return (
-    <main style={{ margin: "2rem", fontFamily: "sans-serif", maxWidth: 720 }}>
+    <main className="page card stack">
+      <AdminNav />
       <h1>CRUD da Knowledge Base</h1>
-      <form onSubmit={handleCreate} style={{ display: "grid", gap: "0.75rem" }}>
-        <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="Tenant ID" />
-        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" />
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" />
-        <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Conteúdo" rows={6} />
-        <button type="submit">Criar Item</button>
+      <p className="muted">Gerencie itens de FAQ, políticas e respostas canônicas.</p>
+      <form className="stack" onSubmit={handleCreate}>
+        <TenantSelect value={tenantId} onChange={setTenantId} placeholder="Selecione o tenant para criar item" />
+        <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" />
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" />
+        <textarea className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Conteúdo" rows={6} />
+        <button className="button" type="submit" disabled={!tenantId}>
+          Criar Item
+        </button>
       </form>
-      <p>{result}</p>
+      {result ? <p className={result.startsWith("Erro:") ? "result-error" : "result-success"}>{result}</p> : null}
     </main>
   );
 }

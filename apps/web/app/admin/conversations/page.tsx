@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AdminNav } from "../_components/admin-nav";
+import { TenantSelect } from "../_components/tenant-select";
 
 type Conversation = {
   id: string;
@@ -38,36 +40,32 @@ export default function ConversationsPage() {
   }
 
   return (
-    <main style={{ margin: "2rem", fontFamily: "sans-serif" }}>
+    <main className="page card stack">
+      <AdminNav />
       <h1>Conversas e mensagens</h1>
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <input
-          value={tenantId}
-          onChange={(event) => setTenantId(event.target.value)}
-          placeholder="Tenant ID"
-          style={{ minWidth: "320px" }}
-        />
-        <button type="button" onClick={loadConversations}>
+      <div className="row">
+        <TenantSelect value={tenantId} onChange={setTenantId} placeholder="Selecione o tenant para listar conversas" />
+        <button className="button" type="button" onClick={loadConversations} disabled={!tenantId}>
           Buscar conversas
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem" }}>
-        <div>
-          <h3>Lista</h3>
-          <ul>
+      <div className="split">
+        <div className="card stack">
+          <h3 className="section-title">Lista</h3>
+          <ul className="list">
             {conversations.map((conversation) => (
               <li key={conversation.id}>
-                <button type="button" onClick={() => loadMessages(conversation.id)}>
+                <button className="button full mono" type="button" onClick={() => loadMessages(conversation.id)}>
                   {conversation.session_id} ({conversation.status})
                 </button>
               </li>
             ))}
           </ul>
         </div>
-        <div>
-          <h3>Mensagens</h3>
-          <ul>
+        <div className="card stack">
+          <h3 className="section-title">Mensagens</h3>
+          <ul className="list">
             {messages.map((message) => (
               <li key={message.id}>
                 <b>{message.role}:</b> {message.content}
