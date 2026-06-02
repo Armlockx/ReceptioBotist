@@ -18,11 +18,56 @@ import { chatRequestSchema } from "@receptio/shared/index";
 import { checkTenantRateLimit, getFaqCachedResponse, setFaqCachedResponse } from "../../../lib/rate-limit";
 
 const FALLBACK_MODEL = "llama-3.1-8b-instant";
+const LOCATION_FALLBACK_REPLY =
+  "Nao encontrei o endereco cadastrado neste momento. Posso te encaminhar para atendimento humano?";
 
 function estimateCostUsd(promptTokens: number, completionTokens: number) {
   const inputPerMillion = 0.05;
   const outputPerMillion = 0.08;
   return (promptTokens / 1_000_000) * inputPerMillion + (completionTokens / 1_000_000) * outputPerMillion;
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isLocationQuestion(question: string) {
+  const normalized = normalizeText(question);
+  return [
+    "onde fica",
+    "endereco",
+    "localizacao",
+    "como chegar",
+    "cidade",
+    "bairro",
+    "gps",
+    "rota",
+    "mapa"
+  ].some((keyword) => normalized.includes(keyword));
+}
+
+function canCacheAnswer(answer: string) {
+  const normalized = normalizeText(answer);
+  if (
+    normalized.includes("[insira") ||
+    normalized.includes("nao sei") ||
+    normalized.includes("nao encontrei essa informacao")
+  ) {
+    return false;
+  }
+
+  if (
+    normalized.includes("provavelmente") ||
+    normalized.includes("talvez") ||
+    normalized.includes("acho que")
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function POST(request: Request) {
@@ -73,12 +118,26 @@ export async function POST(request: Request) {
 
   const history = await listRecentConversationMessages(conversationId, 10);
   const ragSnippets = await getRagSnippets(tenant.id, parsed.data.message, 3);
+  const isLocationIntent = isLocationQuestion(parsed.data.message);
+  if (isLocationIntent && ragSnippets.length === 0) {
+    await logMessage({
+      conversationId,
+      role: "assistant",
+      content: LOCATION_FALLBACK_REPLY
+    });
+
+    return NextResponse.json({
+      reply: LOCATION_FALLBACK_REPLY,
+      session_id: sessionId,
+      usage: { tokens_in: 0, tokens_out: 0, latency_ms: 0 }
+    });
+  }
   const messages = buildPromptPayload({
     nicheType: tenant.niche_type,
     basePrompt:
       typeof tenant.config?.system_prompt === "string"
-        ? tenant.config.system_prompt
-        : "Você é um recepcionista virtual útil e objetivo.",
+        ? `${tenant.config.system_prompt}\nUse somente informacoes explicitas do contexto fornecido. Se a informacao nao estiver no contexto, diga exatamente: 'Nao encontrei essa informacao no cadastro deste estabelecimento.' Nunca invente endereco, telefone, horario, bairro, numero ou ponto de referencia.`
+        : "Voce e um recepcionista virtual util e objetivo. Use somente informacoes explicitas do contexto fornecido. Se a informacao nao estiver no contexto, diga exatamente: 'Nao encontrei essa informacao no cadastro deste estabelecimento.' Nunca invente endereco, telefone, horario, bairro, numero ou ponto de referencia.",
     history: pickWindowedHistory(
       history.map((item) => ({
         role: item.role,
@@ -132,7 +191,9 @@ export async function POST(request: Request) {
       costEstimated
     });
 
-    await setFaqCachedResponse(tenant.id, parsed.data.message, reply);
+    if (canCacheAnswer(reply)) {
+      await setFaqCachedResponse(tenant.id, parsed.data.message, reply);
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     await fetch(`${appUrl}/api/webhooks/conversation.started`, {

@@ -2,12 +2,115 @@ import { randomUUID } from "crypto";
 import { createServiceSupabaseClient } from "./client";
 import type { NicheType } from "@receptio/shared/index";
 
+const STOPWORDS = new Set([
+  "a",
+  "as",
+  "o",
+  "os",
+  "de",
+  "da",
+  "das",
+  "do",
+  "dos",
+  "e",
+  "em",
+  "na",
+  "no",
+  "nas",
+  "nos",
+  "para",
+  "por",
+  "um",
+  "uma",
+  "que",
+  "qual",
+  "quais",
+  "onde",
+  "fica"
+]);
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getQueryTerms(query: string) {
+  const normalized = normalizeText(query);
+  const baseTerms = normalized
+    .split(/[^a-z0-9]+/g)
+    .filter((term) => term.length >= 3 && !STOPWORDS.has(term));
+
+  const expanded = new Set(baseTerms);
+  const locationSignals = [
+    "endereco",
+    "localizacao",
+    "cidade",
+    "bairro",
+    "gps",
+    "rota",
+    "chegar",
+    "interior",
+    "mapa"
+  ];
+
+  if (locationSignals.some((signal) => normalized.includes(signal))) {
+    for (const signal of locationSignals) {
+      expanded.add(signal);
+    }
+  }
+
+  return [...expanded];
+}
+
+function scoreKnowledgeRow(params: {
+  category: string | null;
+  title: string | null;
+  content: string | null;
+  terms: string[];
+}) {
+  const normalizedTitle = normalizeText(params.title ?? "");
+  const normalizedContent = normalizeText(params.content ?? "");
+  const normalizedCategory = normalizeText(params.category ?? "");
+  let score = 0;
+
+  for (const term of params.terms) {
+    if (normalizedTitle.includes(term)) score += 6;
+    if (normalizedContent.includes(term)) score += 3;
+    if (normalizedCategory.includes(term)) score += 4;
+  }
+
+  if (["endereco", "localizacao", "cidade", "contato"].includes(normalizedCategory)) {
+    score += 2;
+  }
+
+  return score;
+}
+
 export async function getTenantByKey(tenantKey: string) {
   const supabase = createServiceSupabaseClient();
   const { data, error } = await supabase
     .from("tenants")
     .select("id,name,niche_type,config,groq_api_key_encrypted")
     .eq("tenant_key", tenantKey)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getTenantBySlug(slug: string) {
+  const supabase = createServiceSupabaseClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id,name,slug,niche_type,config,tenant_key")
+    .eq("slug", slug)
     .single();
 
   if (error) {
@@ -106,12 +209,32 @@ export async function getRagSnippets(tenantId: string, query: string, limit = 3)
   const supabase = createServiceSupabaseClient();
   const { data, error } = await supabase
     .from("knowledge_items")
-    .select("title,content")
+    .select("category,title,content,created_at")
     .eq("tenant_id", tenantId)
-    .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
-    .limit(limit);
+    .order("created_at", { ascending: false })
+    .limit(500);
   if (error) throw error;
-  return (data ?? []).map((item) => `${item.title}: ${item.content}`);
+
+  const terms = getQueryTerms(query);
+  const rankedRows = (data ?? [])
+    .map((item) => ({
+      item,
+      score: scoreKnowledgeRow({
+        category: item.category ?? null,
+        title: item.title ?? null,
+        content: item.content ?? null,
+        terms
+      })
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(
+      (entry) =>
+        `[${entry.item.category ?? "geral"}] ${entry.item.title}: ${entry.item.content}`
+    );
+
+  return rankedRows;
 }
 
 export async function createTenantWithTemplate(params: {
@@ -166,6 +289,30 @@ export async function listTenants(limit = 500) {
     .select("id,name,slug,tenant_key,niche_type,created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listKnowledgeItemsByTenant(
+  tenantId: string,
+  options?: { category?: string; limit?: number }
+) {
+  const supabase = createServiceSupabaseClient();
+  let query = supabase
+    .from("knowledge_items")
+    .select("id,category,title,content,metadata,created_at")
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: true });
+
+  if (options?.category) {
+    query = query.eq("category", options.category);
+  }
+
+  if (options?.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
 }
