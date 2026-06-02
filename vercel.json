@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "if [ -f pnpm-workspace.yaml ]; then pnpm install --frozen-lockfile; else cd ../.. && pnpm install --frozen-lockfile; fi",
+  "buildCommand": "if [ -f pnpm-workspace.yaml ]; then pnpm --filter @receptio/web build; else cd ../.. && pnpm --filter @receptio/web build; fi"
+}
